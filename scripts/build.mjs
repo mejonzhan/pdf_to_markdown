@@ -52,9 +52,6 @@ const buildOptions = {
   format: 'esm',
   target: ['chrome114'],
   sourcemap: true,
-  define: {
-    __PDFJS_WORKER_PATH__: JSON.stringify(workerSrc)
-  },
   logLevel: 'info'
 }
 

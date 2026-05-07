@@ -1,7 +1,7 @@
 {
   "version": 3,
   "sources": ["../src/popup.ts"],
-  "sourcesContent": ["const openConverterButton = document.getElementById('openConverter')\n\nif (openConverterButton) {\n  openConverterButton.addEventListener('click', async () => {\n    const url = chrome.runtime.getURL('convert.html')\n    await chrome.tabs.create({ url })\n    window.close()\n  })\n}\n\n"],
-  "mappings": ";AAAA,IAAM,sBAAsB,SAAS,eAAe,eAAe;AAEnE,IAAI,qBAAqB;AACvB,sBAAoB,iBAAiB,SAAS,YAAY;AACxD,UAAM,MAAM,OAAO,QAAQ,OAAO,cAAc;AAChD,UAAM,OAAO,KAAK,OAAO,EAAE,IAAI,CAAC;AAChC,WAAO,MAAM;AAAA,EACf,CAAC;AACH;",
+  "sourcesContent": ["const openConverterButton = document.getElementById('openConverter')\n\nfunction getBaseDirFromPopupPath() {\n  const popupPath = chrome.runtime.getManifest().action?.default_popup ?? ''\n  const parts = popupPath.split('/').filter(Boolean)\n  if (parts.length <= 1) return ''\n  return parts.slice(0, -1).join('/')\n}\n\nif (openConverterButton) {\n  openConverterButton.addEventListener('click', async () => {\n    const baseDir = getBaseDirFromPopupPath()\n    const convertPath = baseDir ? `${baseDir}/convert.html` : 'convert.html'\n    const url = chrome.runtime.getURL(convertPath)\n    await chrome.tabs.create({ url })\n    window.close()\n  })\n}\n"],
+  "mappings": ";AAAA,IAAM,sBAAsB,SAAS,eAAe,eAAe;AAEnE,SAAS,0BAA0B;AACjC,QAAM,YAAY,OAAO,QAAQ,YAAY,EAAE,QAAQ,iBAAiB;AACxE,QAAM,QAAQ,UAAU,MAAM,GAAG,EAAE,OAAO,OAAO;AACjD,MAAI,MAAM,UAAU,EAAG,QAAO;AAC9B,SAAO,MAAM,MAAM,GAAG,EAAE,EAAE,KAAK,GAAG;AACpC;AAEA,IAAI,qBAAqB;AACvB,sBAAoB,iBAAiB,SAAS,YAAY;AACxD,UAAM,UAAU,wBAAwB;AACxC,UAAM,cAAc,UAAU,GAAG,OAAO,kBAAkB;AAC1D,UAAM,MAAM,OAAO,QAAQ,OAAO,WAAW;AAC7C,UAAM,OAAO,KAAK,OAAO,EAAE,IAAI,CAAC;AAChC,WAAO,MAAM;AAAA,EACf,CAAC;AACH;",
   "names": []
 }

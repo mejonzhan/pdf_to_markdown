@@ -5,7 +5,8 @@
   "description": "将 PDF 转换为 Markdown（文字 + 图片，适配包含公式/图表的场景）",
   "action": {
     "default_title": "PDF 转 Markdown",
-    "default_popup": "popup.html"
+    "default_popup": "dist/popup.html"
   },
   "permissions": ["downloads"]
 }
+
