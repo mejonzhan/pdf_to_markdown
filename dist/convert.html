@@ -11,12 +11,12 @@
       <div class="header">
         <div>
           <div class="title">PDF 转 Markdown</div>
-          <div class="muted">输出：Markdown + images/（每页一张 PNG，用于保留图片/公式/图表）。</div>
+          <div class="muted">输出：Markdown + images/（提取 PDF 内的图片，并在 Markdown 中引用）。</div>
         </div>
         <div class="actions">
           <label class="checkbox">
-            <input id="includePageImages" type="checkbox" checked />
-            <span>包含页面图片</span>
+            <input id="includeImages" type="checkbox" checked />
+            <span>包含 PDF 图片</span>
           </label>
           <label class="file">
             <input id="fileInput" type="file" accept="application/pdf" />
@@ -43,4 +43,3 @@
     <script type="module" src="./convert.js"></script>
   </body>
 </html>
-

@@ -2592,8 +2592,8 @@ var __webpack_modules__ = {
       var getInternalState = InternalStateModule.get;
       var Int8Array2 = globalThis2.Int8Array;
       var Int8ArrayPrototype = Int8Array2 && Int8Array2.prototype;
-      var Uint8ClampedArray = globalThis2.Uint8ClampedArray;
-      var Uint8ClampedArrayPrototype = Uint8ClampedArray && Uint8ClampedArray.prototype;
+      var Uint8ClampedArray2 = globalThis2.Uint8ClampedArray;
+      var Uint8ClampedArrayPrototype = Uint8ClampedArray2 && Uint8ClampedArray2.prototype;
       var TypedArray = Int8Array2 && getPrototypeOf(Int8Array2);
       var TypedArrayPrototype = Int8ArrayPrototype && getPrototypeOf(Int8ArrayPrototype);
       var ObjectPrototype = Object.prototype;
@@ -27480,9 +27480,9 @@ var __webpack_exports__stopEvent = __webpack_exports__.stopEvent;
 var __webpack_exports__version = __webpack_exports__.version;
 
 // src/convert.ts
-__webpack_exports__GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("pdf.worker.mjs");
+__webpack_exports__GlobalWorkerOptions.workerSrc = new URL("./pdf.worker.mjs", import.meta.url).toString();
 var fileInput = document.getElementById("fileInput");
-var includePageImages = document.getElementById("includePageImages");
+var includeImages = document.getElementById("includeImages");
 var statusEl = document.getElementById("status");
 var progressEl = document.getElementById("progress");
 var mdPreview = document.getElementById("mdPreview");
@@ -27556,20 +27556,108 @@ function buildLinesFromTextItems(items) {
   flush();
   return lines;
 }
-async function renderPageToPngBlob(page) {
-  const viewport = page.getViewport({ scale: 2 });
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Cannot init canvas context.");
-  canvas.width = Math.ceil(viewport.width);
-  canvas.height = Math.ceil(viewport.height);
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  const blob = await new Promise((resolve, reject) => {
+async function canvasToPngBlob(canvas) {
+  return await new Promise((resolve, reject) => {
     canvas.toBlob((b) => b ? resolve(b) : reject(new Error("Canvas toBlob failed.")), "image/png");
   });
-  return blob;
 }
-async function convertPdf(file, withPageImages) {
+async function imageObjectToPngBlob(imageObj) {
+  const bitmap = imageObj?.bitmap;
+  const width = Number(imageObj?.width ?? bitmap?.width);
+  const height = Number(imageObj?.height ?? bitmap?.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    throw new Error("Unsupported image object (missing size).");
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(width);
+  canvas.height = Math.ceil(height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Cannot init canvas context.");
+  if (bitmap) {
+    ctx.drawImage(bitmap, 0, 0);
+    return await canvasToPngBlob(canvas);
+  }
+  if (imageObj instanceof ImageBitmap) {
+    ctx.drawImage(imageObj, 0, 0);
+    return await canvasToPngBlob(canvas);
+  }
+  if (imageObj instanceof HTMLCanvasElement) {
+    ctx.drawImage(imageObj, 0, 0);
+    return await canvasToPngBlob(canvas);
+  }
+  if (imageObj instanceof HTMLImageElement) {
+    ctx.drawImage(imageObj, 0, 0);
+    return await canvasToPngBlob(canvas);
+  }
+  const raw = imageObj?.data;
+  if (raw && (raw instanceof Uint8Array || raw instanceof Uint8ClampedArray)) {
+    const data = raw instanceof Uint8ClampedArray ? raw : new Uint8ClampedArray(raw);
+    const imgData = new ImageData(data, canvas.width, canvas.height);
+    ctx.putImageData(imgData, 0, 0);
+    return await canvasToPngBlob(canvas);
+  }
+  throw new Error("Unsupported image object type.");
+}
+function waitForPdfObject(container, objId) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (container?.has?.(objId)) return resolve(container.get(objId));
+    } catch {
+    }
+    try {
+      container?.get?.(objId, (data) => resolve(data));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+async function getImageObjectFromPage(page, objId) {
+  try {
+    return await waitForPdfObject(page.objs, objId);
+  } catch {
+  }
+  try {
+    return await waitForPdfObject(page.commonObjs, objId);
+  } catch {
+  }
+  return null;
+}
+async function extractEmbeddedImagesFromPage(page) {
+  const operatorList = await page.getOperatorList();
+  const results = [];
+  const seenKeys = /* @__PURE__ */ new Set();
+  for (let i = 0; i < operatorList.fnArray.length; i++) {
+    const fn = operatorList.fnArray[i];
+    const args = operatorList.argsArray[i] ?? [];
+    if (fn === __webpack_exports__OPS.paintImageXObject || fn === __webpack_exports__OPS.paintJpegXObject) {
+      const objId = args?.[0];
+      if (typeof objId !== "string") continue;
+      const key = `xobj:${objId}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      const imgObj = await getImageObjectFromPage(page, objId);
+      if (!imgObj) continue;
+      try {
+        results.push(await imageObjectToPngBlob(imgObj));
+      } catch {
+      }
+      continue;
+    }
+    if (fn === __webpack_exports__OPS.paintInlineImageXObject) {
+      const imgObj = args?.[0];
+      const key = `inline:${i}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      if (!imgObj) continue;
+      try {
+        results.push(await imageObjectToPngBlob(imgObj));
+      } catch {
+      }
+    }
+  }
+  return results;
+}
+async function convertPdf(file, withImages) {
   const baseName = sanitizeBaseName(file.name);
   const data = await file.arrayBuffer();
   const loadingTask = __webpack_exports__getDocument({ data });
@@ -27595,13 +27683,15 @@ async function convertPdf(file, withPageImages) {
 
 `;
     }
-    if (withPageImages) {
-      const imgBlob = await renderPageToPngBlob(page);
-      const imgName = `page-${String(i).padStart(3, "0")}.png`;
-      imagesFolder.file(imgName, imgBlob);
-      markdown += `![\u7B2C ${i} \u9875](images/${imgName})
+    if (withImages) {
+      const images = await extractEmbeddedImagesFromPage(page);
+      for (let j = 0; j < images.length; j++) {
+        const imgName = `page-${String(i).padStart(3, "0")}-img-${String(j + 1).padStart(2, "0")}.png`;
+        imagesFolder.file(imgName, images[j]);
+        markdown += `![\u7B2C ${i} \u9875\u56FE\u7247 ${j + 1}](images/${imgName})
 
 `;
+      }
     }
   }
   zip.file("output.md", markdown);
@@ -27622,12 +27712,12 @@ async function runConvert(file) {
   setStatus("\u6B63\u5728\u8F6C\u6362\u2026");
   setProgress("");
   try {
-    const withPageImages = includePageImages?.checked ?? true;
-    const result = await convertPdf(file, withPageImages);
+    const withImages = includeImages?.checked ?? true;
+    const result = await convertPdf(file, withImages);
     lastResult = result;
     if (mdPreview) mdPreview.value = result.markdown;
     setStatus("\u8F6C\u6362\u5B8C\u6210\u3002");
-    setProgress(withPageImages ? "\u5DF2\u751F\u6210 output.md \u4E0E images/\uFF0C\u5E76\u6253\u5305\u4E3A zip\u3002" : "\u5DF2\u751F\u6210 output.md\u3002");
+    setProgress(withImages ? "\u5DF2\u751F\u6210 output.md \u4E0E images/\uFF0C\u5E76\u6253\u5305\u4E3A zip\u3002" : "\u5DF2\u751F\u6210 output.md\u3002");
     setButtonsEnabled(true);
   } catch (e) {
     setStatus(`\u8F6C\u6362\u5931\u8D25\uFF1A${e?.message || String(e)}`, true);
@@ -27642,7 +27732,7 @@ fileInput?.addEventListener("change", async () => {
   if (!file) return;
   await runConvert(file);
 });
-includePageImages?.addEventListener("change", async () => {
+includeImages?.addEventListener("change", async () => {
   const file = fileInput?.files?.[0];
   if (!file) return;
   await runConvert(file);
