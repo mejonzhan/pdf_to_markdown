@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 转 Markdown</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div>
+          <div class="title">PDF 转 Markdown</div>
+          <div class="muted">输出：Markdown + images/（每页一张 PNG，用于保留图片/公式/图表）。</div>
+        </div>
+        <div class="actions">
+          <label class="checkbox">
+            <input id="includePageImages" type="checkbox" checked />
+            <span>包含页面图片</span>
+          </label>
+          <label class="file">
+            <input id="fileInput" type="file" accept="application/pdf" />
+            <span class="button">选择 PDF</span>
+          </label>
+          <button id="downloadZip" class="primary" disabled>下载 ZIP</button>
+          <button id="downloadMd" disabled>下载 MD</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div class="panelTitle">状态</div>
+          <div id="status" class="mono">等待选择文件…</div>
+          <div id="progress" class="mono muted"></div>
+        </div>
+        <div class="panel">
+          <div class="panelTitle">Markdown 预览</div>
+          <textarea id="mdPreview" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./convert.js"></script>
+  </body>
+</html>
+
