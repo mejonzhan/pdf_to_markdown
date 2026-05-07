@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/popup.ts"],
+  "sourcesContent": ["const openConverterButton = document.getElementById('openConverter')\n\nif (openConverterButton) {\n  openConverterButton.addEventListener('click', async () => {\n    const url = chrome.runtime.getURL('convert.html')\n    await chrome.tabs.create({ url })\n    window.close()\n  })\n}\n\n"],
+  "mappings": ";AAAA,IAAM,sBAAsB,SAAS,eAAe,eAAe;AAEnE,IAAI,qBAAqB;AACvB,sBAAoB,iBAAiB,SAAS,YAAY;AACxD,UAAM,MAAM,OAAO,QAAQ,OAAO,cAAc;AAChD,UAAM,OAAO,KAAK,OAAO,EAAE,IAAI,CAAC;AAChC,WAAO,MAAM;AAAA,EACf,CAAC;AACH;",
+  "names": []
+}
